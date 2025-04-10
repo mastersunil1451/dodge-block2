@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Jumping Cube (Geometry Dash Style)</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background-color: #111;
+      border: 2px solid #fff;
+    }
+
+    .screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #joystick-container {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 120px;
+      z-index: 10;
+    }
+
+    #joystick-base {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+      transition: transform 0.2s;
+    }
+
+    #joystick-handle {
+      position: absolute;
+      width: 40%;
+      height: 40%;
+      background: #007bff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #007bff;
+      transition: all 0.1s;
+      transform: translate(40px, 40px);
+    }
+
+    #joystick-container.active #joystick-handle {
+      box-shadow: 0 0 20px #007bff, 0 0 40px rgba(0, 123, 255, 0.4);
+      background: #0069d9;
+    }
+  </style>
+</head>
+<body>
+  <!-- Home Page -->
+  <div id="home-screen" class="screen">
+    <h1>Jumping Cube</h1>
+    <button id="start-game">Start Game</button>
+    <button id="how-to-play">How to Play</button>
+  </div>
+
+  <!-- How to Play Screen -->
+  <div id="instructions-screen" class="screen hidden">
+    <h2>How to Play</h2>
+    <p>Move the cube to avoid falling obstacles.</p>
+    <p><strong>Mobile:</strong> Use the joystick to move</p>
+    <p><strong>PC:</strong> Use I (Up), K (Down), J (Left), L (Right).</p>
+    <button id="back-to-menu">Back to Menu</button>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen hidden">
+    <canvas id="game-canvas"></canvas>
+    <div id="joystick-container">
+      <div id="joystick-base"></div>
+      <div id="joystick-handle"></div>
+    </div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="game-over-screen" class="screen hidden">
+    <h2>Game Over</h2>
+    <p id="final-score">Your Score: 0</p>
+    <button id="restart-game">Restart</button>
+    <button id="back-to-menu-game-over">Back to Menu</button>
+  </div>
+
+  <script>
+    const homeScreen = document.getElementById('home-screen');
+    const instructionsScreen = document.getElementById('instructions-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const finalScoreDisplay = document.getElementById('final-score');
+
+    const startGameButton = document.getElementById('start-game');
+    const howToPlayButton = document.getElementById('how-to-play');
+    const backToMenuButton = document.getElementById('back-to-menu');
+    const backToMenuGameOverButton = document.getElementById('back-to-menu-game-over');
+    const restartGameButton = document.getElementById('restart-game');
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystickHandle = document.getElementById('joystick-handle');
+
+    const aspectRatioWidth = 360;
+    const aspectRatioHeight = 640;
+    canvas.width = aspectRatioWidth;
+    canvas.height = aspectRatioHeight;
+
+    let cube = { 
+      x: canvas.width / 2 - 15, 
+      y: canvas.height - 50, 
+      size: 30, 
+      dx: 0, 
+      dy: 0 
+    };
+    
+    let obstacles = [];
+    let score = 0;
+    let speed = 2;
+    let gameOver = false;
+
+    let joystick = {
+      active: false,
+      origin: { x: 0, y: 0 },
+      offset: { x: 0, y: 0 },
+      baseSize: 120,
+      handleSize: 48
+    };
+
+    startGameButton.addEventListener('click', startGame);
+    howToPlayButton.addEventListener('click', showInstructions);
+    backToMenuButton.addEventListener('click', returnToMenu);
+    backToMenuGameOverButton.addEventListener('click', returnToMenu);
+    restartGameButton.addEventListener('click', restartGame);
+
+    document.addEventListener('keydown', handleKeyPress);
+    document.addEventListener('keyup', handleKeyRelease);
+
+    joystickContainer.addEventListener('touchstart', handleTouchStart);
+    joystickContainer.addEventListener('touchmove', handleTouchMove);
+    joystickContainer.addEventListener('touchend', handleTouchEnd);
+    joystickContainer.addEventListener('touchcancel', handleTouchEnd);
+
+    function startGame() {
+      homeScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      resetGame();
+      gameLoop();
+    }
+
+    function showInstructions() {
+      homeScreen.classList.add('hidden');
+      instructionsScreen.classList.remove('hidden');
+    }
+
+    function returnToMenu() {
+      instructionsScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      homeScreen.classList.remove('hidden');
+    }
+
+    function restartGame() {
+      gameOverScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      resetGame();
+      gameLoop();
+    }
+
+    function resetGame() {
+      cube = { 
+        x: canvas.width / 2 - 15, 
+        y: canvas.height - 50, 
+        size: 30, 
+        dx: 0, 
+        dy: 0 
+      };
+      obstacles = [];
+      score = 0;
+      speed = 2;
+      gameOver = false;
+    }
+
+    function handleKeyPress(event) {
+      const step = 5;
+      if (event.key === 'i') cube.dy = -step;
+      if (event.key === 'k') cube.dy = step;
+      if (event.key === 'j') cube.dx = -step;
+      if (event.key === 'l') cube.dx = step;
+    }
+
+    function handleKeyRelease(event) {
+      if (['i', 'k'].includes(event.key)) cube.dy = 0;
+      if (['j', 'l'].includes(event.key)) cube.dx = 0;
+    }
+
+    function handleTouchStart(event) {
+      if (gameOver) return;
+      event.preventDefault();
+      
+      joystick.active = true;
+      const touch = event.touches[0];
+      const rect = joystickContainer.getBoundingClientRect();
+      
+      joystick.origin = {
+        x: touch.clientX - rect.left - joystick.baseSize/2,
+        y: touch.clientY - rect.top - joystick.baseSize/2
+      };
+      
+      joystickContainer.classList.add('active');
+    }
+
+    function handleTouchMove(event) {
+      if (!joystick.active || gameOver) return;
+      event.preventDefault();
+      
+      const touch = event.touches[0];
+      const rect = joystickContainer.getBoundingClientRect();
+      const centerX = rect.left + joystick.baseSize/2;
+      const centerY = rect.top + joystick.baseSize/2;
+      const maxDistance = joystick.baseSize/2 - joystick.handleSize/2;
+      
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+      const distance = Math.hypot(dx, dy);
+      
+      if (distance > maxDistance) {
+        dx = (dx / distance) * maxDistance;
+        dy = (dy / distance) * maxDistance;
+      }
+      
+      joystick.offset = { x: dx, y: dy };
+      updateJoystickPosition();
+    }
+
+    function handleTouchEnd() {
+      if (gameOver) return;
+      joystick.active = false;
+      joystick.offset = { x: 0, y: 0 };
+      cube.dx = 0;
+      cube.dy = 0;
+      joystickContainer.classList.remove('active');
+      updateJoystickPosition();
+    }
+
+    function updateJoystickPosition() {
+      const rect = joystickContainer.getBoundingClientRect();
+      const centerX = rect.left + joystick.baseSize/2;
+      const centerY = rect.top + joystick.baseSize/2;
+      
+      const handleX = centerX - joystick.handleSize/2 + joystick.offset.x;
+      const handleY = centerY - joystick.handleSize/2 + joystick.offset.y;
+      
+      joystickHandle.style.transform = `translate(${handleX - centerX + joystick.handleSize/2}px, ${handleY - centerY + joystick.handleSize/2}px)`;
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (joystick.active) {
+        const maxSpeed = 5;
+        cube.dx = (joystick.offset.x / (joystick.baseSize/2)) * maxSpeed;
+        cube.dy = (joystick.offset.y / (joystick.baseSize/2)) * maxSpeed;
+      } else {
+        cube.dx = 0;
+        cube.dy = 0;
+      }
+
+      cube.x += cube.dx;
+      cube.y += cube.dy;
+
+      cube.x = Math.max(0, Math.min(canvas.width - cube.size, cube.x));
+      cube.y = Math.max(0, Math.min(canvas.height - cube.size, cube.y));
+
+      ctx.fillStyle = '#007bff';
+      ctx.fillRect(cube.x, cube.y, cube.size, cube.size);
+
+      if (Math.random() < 0.02) {
+        const size = Math.random() * 50 + 20;
+        const x = Math.random() * (canvas.width - size);
+        obstacles.push({ x, y: 0, size });
+      }
+
+      ctx.fillStyle = '#ff0000';
+      obstacles.forEach((obstacle, index) => {
+        obstacle.y += speed;
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.size, obstacle.size);
+
+        if (
+          cube.x < obstacle.x + obstacle.size &&
+          cube.x + cube.size > obstacle.x &&
+          cube.y < obstacle.y + obstacle.size &&
+          cube.y + cube.size > obstacle.y
+        ) {
+          gameOver = true;
+          endGame();
+        }
+
+        if (obstacle.y > canvas.height) {
+          obstacles.splice(index, 1);
+          score++;
+        }
+      });
+
+      speed = Math.min(5, speed + 0.001);
+
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.fillText(`Score: ${score}`, 10, 30);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+      finalScoreDisplay.textContent = `Your Score: ${score}`;
+      gameScreen.classList.add('hidden');
+      gameOverScreen.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
