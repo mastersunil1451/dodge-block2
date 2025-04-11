@@ -53,8 +53,8 @@
     /* New Control Object Styling – initial position removed */
     #control-object {
       position: absolute;
-      width: 40px;
-      height: 40px;
+      width: 100px;
+      height: 100px;
       background-color: rgba(0, 123, 255, 0.5);
       border: 2px solid #007bff;
       border-radius: 10px;
@@ -126,7 +126,7 @@
     let controlObj = {
       x: canvas.width / 2,
       y: canvas.height / 2,
-      size: 40
+      size: 100
     };
     
     let obstacles = [];
@@ -231,7 +231,7 @@
       controlObj = {
         x: canvas.width / 2,
         y: canvas.height / 2,
-        size: 40
+        size: 100
       };
       
       // Position the control object inside canvas using its bounding rectangle.
@@ -243,7 +243,7 @@
       
       obstacles = [];
       score = 0;
-      speed = 2;
+      speed = 2.5;
       gameOver = false;
     }
     
@@ -291,7 +291,7 @@
       });
       
       // Increase speed gradually.
-      speed = Math.min(5, speed + 0.001);
+      speed = Math.min(5, speed + 0.0025);
       
       // Draw score.
       ctx.fillStyle = '#fff';
