@@ -62,9 +62,57 @@
       user-select: none;
       z-index: 2;
     }
+    #ad-overlay {
+      height: 290px;
+      width: 300px;
+      position: absolute;
+      background-color: white;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      z-index: 99;
+      p {
+        color: #000000;
+        font-size: 13px;
+        position: absolute;
+        bottom: -16px;
+        left: 0;
+        padding: 5px;
+      }
+    }
+      #ad-overlay button {
+        position: absolute;
+        right: -10px;
+        top: -10px;
+        border: 1px solid black;
+        display: block;
+        height: 25px !important;
+        aspect-ratio: 1/1 !important;
+        padding: 0 !important;
+        background-color: white !important;
+        color: black !important;
+        border-radius: 0 !important;
+      }
+
   </style>
 </head>
 <body>
+  <div id="ad-overlay">
+    <button id="close-start-btn">X</button>
+    <!-- Adsterra Ads Code -->
+    <script type="text/javascript">
+      atOptions = {
+        'key' : '15cd165eb5c6f2b40807bacca76d739c',
+        'format' : 'iframe',
+        'height' : 250,
+        'width' : 300,
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="//www.highperformanceformat.com/15cd165eb5c6f2b40807bacca76d739c/invoke.js"></script>
+    <p>Visiting this small ad helps us to grow and update. Thanks for your support! 💖</p>
+  </div>
   <!-- Home Page -->
   <div id="home-screen" class="screen">
     <h1>Jumping Cube</h1>
@@ -93,7 +141,7 @@
     <button id="restart-game">Restart</button>
     <button id="back-to-menu-game-over">Back to Menu</button>
   </div>
-  
+
   <script>
     // Screen elements and buttons
     const homeScreen = document.getElementById('home-screen');
@@ -106,6 +154,9 @@
     const backToMenuButton = document.getElementById('back-to-menu');
     const backToMenuGameOverButton = document.getElementById('back-to-menu-game-over');
     const restartGameButton = document.getElementById('restart-game');
+    const adOverlay = document.getElementById('ad-overlay');
+    const closeBtn = document.getElementById('close-start-btn');
+
     
     // Canvas setup
     const canvas = document.getElementById('game-canvas');
@@ -195,6 +246,7 @@
     backToMenuButton.addEventListener('click', returnToMenu);
     backToMenuGameOverButton.addEventListener('click', returnToMenu);
     restartGameButton.addEventListener('click', restartGame);
+    closeBtn.addEventListener('click', realRestartGame);
     
     function startGame() {
       homeScreen.classList.add('hidden');
@@ -214,11 +266,15 @@
       homeScreen.classList.remove('hidden');
     }
     
-    function restartGame() {
+    function realRestartGame() {
+      adOverlay.style.display = 'none';
       gameOverScreen.classList.add('hidden');
       gameScreen.classList.remove('hidden');
       resetGame();
       gameLoop();
+    }
+    function restartGame() {
+      adOverlay.style.display = 'block';
     }
     
     function resetGame() {
